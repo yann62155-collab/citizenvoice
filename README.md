@@ -1,50 +1,47 @@
 # Citizen Voix
 
-Chat vocal de proximité **dans le navigateur** pour les joueurs qui n'ont pas Simple Voice Chat
-(Xbox, PlayStation, Switch, téléphone, tablette), relié à **Simple Voice Chat** pour les joueurs PC.
+Chat vocal de proximité du serveur Citizen, **sans Simple Voice Chat** et sans aucune dépendance.
 
-NeoForge 21.1.215 · Minecraft 1.21.1 · Java 21 · **mod uniquement serveur** (ne pas l'envoyer aux joueurs).
+NeoForge 21.1.215 · Minecraft 1.21.1 · Java 21
 
-## Qui entend qui
+## Qui utilise quoi
+| Plateforme | Comment |
+|---|---|
+| **PC Java** | le mod `citizenvoice.jar` dans le dossier `mods` du joueur — aucune page web |
+| **Xbox, PlayStation, Switch, téléphone, tablette** (via Citizen Bedrock) | page web envoyée automatiquement dans le chat |
+| **Serveur** | le même `citizenvoice.jar` dans `mods/` : il relie tout le monde |
 
-| Celui qui parle ↓ / celui qui écoute → | Joueur PC (Simple Voice Chat) | Joueur navigateur |
-|---|---|---|
-| Joueur PC (Simple Voice Chat) | comme avant (SVC) | ✅ voix décodée, atténuée par la distance, gauche/droite |
-| Joueur navigateur | ✅ voix jouée en 3D sur son personnage | ✅ |
+Tout le monde s'entend : PC ↔ PC, PC ↔ console, console ↔ console.
+Distances : **20 blocs** en voix normale, **3 blocs** en chuchotant (`distance` et `distance_chuchotement`
+dans `config/citizenvoice/citizenvoice.properties` côté serveur).
 
-La voix d'un joueur navigateur sort **de son personnage en jeu** : les joueurs PC l'entendent en 3D,
-avec l'icône de parole, exactement comme un autre joueur PC. Les groupes privés de Simple Voice Chat restent privés.
+## Joueur PC
+| Touche (modifiable dans Options → Contrôles) | Action |
+|---|---|
+| **V** | menu des réglages : micro, sortie son, mode, sensibilité, amplification, volume, test du micro |
+| **Verr. Maj** | appuyer pour parler (si ce mode est choisi) |
+| **B** (maintenir) | chuchoter (3 blocs) |
+| **M** | couper / réactiver le micro |
 
-## Installation (serveur)
-1. Mettre `citizenvoice.jar` dans `mods/` du serveur (à côté de `voicechat`).
-2. Ouvrir/réserver un port chez BoxToPlay (par défaut **30053**) et le mettre dans
-   `config/citizenvoice/citizenvoice.properties` si différent.
-3. Redémarrer. La console affiche `Chat vocal web en ligne : https://mc312.boxtoplay.com:30053`.
+En haut à gauche de l'écran : « Tu parles », « Micro coupé » et les noms des joueurs que tu entends.
+Réglages enregistrés dans `config/citizenvoice-client.properties`.
 
-## Côté joueur
-- **Joueurs Java PC : aucune page web.** Ils utilisent Simple Voice Chat comme d'habitude ; `/voix` leur rappelle juste ça.
-- **Joueurs console / téléphone** (détectés par Citizen Bedrock) : 10 s après la connexion, ils reçoivent dans le chat
-  l'adresse + un code à 6 chiffres. `/voix` leur donne un nouveau code à tout moment.
-- Sur la page : entrer le code → autoriser le micro. Le navigateur s'en souvient 24 h (bouton « Reprendre »).
-- Modes « Voix auto » (avec réglage de sensibilité) ou « Appuyer pour parler », micro coupé, sourdine, volume,
-  liste des joueurs à portée avec indicateur de parole.
-
-## Distances
-Voix normale : **20 blocs** · chuchotement : **3 blocs** (`distance` et `distance_chuchotement` dans la config).
-Entre deux joueurs PC, c'est la config de Simple Voice Chat qui compte : dans `config/voicechat/voicechat-server.properties`,
-mettre `max_voice_distance=20` et `whisper_distance=3`.
+## Joueur console / téléphone
+- 10 s après la connexion : adresse + code à 6 chiffres dans le chat (`/voix` pour un nouveau code).
+- Sur la page : micro auto ou appuyer pour parler, chuchoter, couper le micro, sourdine, volume,
+  liste des joueurs à portée avec qui parle.
 
 ## Commandes admin (niveau 2)
 `/voix statut` · `/voix code <joueurs>` · `/voix deconnecter <joueur>` · `/voix recharger`
 
-## HTTPS et certificat
-Les navigateurs n'autorisent le micro qu'en **https**. Par défaut le mod génère un certificat auto-signé :
-à la première visite, le navigateur affiche un avertissement → « Paramètres avancés » → « Continuer ».
-Pour supprimer l'avertissement : mettre un vrai certificat `.p12` dans `config/citizenvoice/` et renseigner
-`certificat=` et `certificat_mot_de_passe=`. Une adresse tapée en `http://` est redirigée automatiquement vers `https://`.
+## Serveur
+- Port du site : **30053** (`port=` dans la config). HTTPS obligatoire pour le micro des navigateurs :
+  certificat auto-signé généré automatiquement (avertissement à la 1re visite → « Paramètres avancés » → « Continuer »),
+  ou vrai certificat `.p12` via `certificat=` / `certificat_mot_de_passe=`.
+- Détection des joueurs console : nécessite Citizen Bedrock sur le serveur.
+- Bande passante : ~16 Ko/s par joueur qui parle (µ-law 16 kHz) vers chaque joueur PC à portée.
 
 ## Limites connues
-- Téléphone qui sert aussi à jouer : l'iPhone coupe le micro de la page quand on passe dans Minecraft.
-  Utiliser un **deuxième appareil** (ou l'écran partagé sur Android).
-- Navigateur Edge de la Xbox : l'accès au micro n'y est pas garanti → utiliser un téléphone à côté de la console.
-- Sans casque, l'écho est possible.
+- iPhone : la page perd le micro quand on passe dans Minecraft sur le même téléphone → 2e appareil conseillé.
+- Edge sur Xbox : micro pas garanti → utiliser un téléphone à côté de la console.
+- Pas d'annulation d'écho : casque conseillé.
