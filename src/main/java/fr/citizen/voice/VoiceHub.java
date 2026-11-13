@@ -95,6 +95,30 @@ public final class VoiceHub {
         return code;
     }
 
+    /** Code encore valable d'un joueur, ou null. */
+    public String currentCode(UUID uuid) {
+        long now = System.currentTimeMillis();
+        for (Map.Entry<String, Pending> e : codes.entrySet()) {
+            if (e.getValue().uuid.equals(uuid) && e.getValue().expires > now) {
+                return e.getKey();
+            }
+        }
+        return null;
+    }
+
+    /** Tous les codes encore valables : « pseudo -> code (minutes restantes) ». */
+    public List<String[]> activeCodes() {
+        long now = System.currentTimeMillis();
+        List<String[]> l = new ArrayList<>();
+        codes.forEach((code, p) -> {
+            if (p.expires > now) {
+                l.add(new String[]{p.name, code, String.valueOf(Math.max(1, (p.expires - now + 59_999) / 60_000))});
+            }
+        });
+        l.sort((a, b) -> a[0].compareToIgnoreCase(b[0]));
+        return l;
+    }
+
     public boolean isConnected(UUID uuid) {
         WsConnection c = clients.get(uuid);
         return c != null && c.isOpen();

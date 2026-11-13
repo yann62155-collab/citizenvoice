@@ -226,7 +226,7 @@ public final class CitizenVoice {
         }
     }
 
-    static void sendCode(ServerPlayer p) {
+    static String sendCode(ServerPlayer p) {
         String code = hub.createCode(p.getUUID(), p.getGameProfile().getName());
         String url = config.publicUrl();
         String shown = url.replaceFirst("^https?://", "");
@@ -244,6 +244,7 @@ public final class CitizenVoice {
                     + "« Paramètres avancés » puis « Continuer vers le site »."));
         }
         p.sendSystemMessage(Component.literal("§7Garde la page ouverte pendant que tu joues. Nouveau code : §f/voix"));
+        return code;
     }
 
     private static void onCommands(RegisterCommandsEvent e) {

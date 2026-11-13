@@ -5,7 +5,10 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
@@ -14,12 +17,23 @@ import java.util.List;
 /**
  * /voix                      : joueur console -> code pour la page web ; joueur PC -> rappel des touches
  * /voix statut               : (admin) qui est connecté par le navigateur
- * /voix code <joueurs>       : (admin) envoie un code à des joueurs
+ * /voix code <joueurs>       : (admin) envoie un nouveau code à des joueurs et te l'affiche
+ * /voix voir <joueur>        : (admin) affiche le code d'un joueur sans le lui envoyer
+ * /voix codes                : (admin) liste tous les codes encore valables
  * /voix deconnecter <joueur> : (admin) coupe la voix web d'un joueur
  * /voix recharger            : (admin) relit la config et redémarre le site
  */
 final class VoiceCommand {
     private VoiceCommand() {
+    }
+
+    /** « Pseudo : 123456 » ; cliquer sur le code le copie. */
+    private static Component codeLine(String name, String code, String note) {
+        return Component.literal("§6[Voix] §f" + name + " : ")
+                .append(Component.literal("§e§l" + code).withStyle(Style.EMPTY
+                        .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, code))
+                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Cliquer pour copier")))))
+                .append(Component.literal(" §7(" + note + ")"));
     }
 
     static void register(CommandDispatcher<CommandSourceStack> d) {
@@ -46,10 +60,37 @@ final class VoiceCommand {
                 .then(Commands.literal("code").requires(s -> s.hasPermission(2))
                         .then(Commands.argument("joueurs", EntityArgument.players()).executes(c -> {
                             Collection<ServerPlayer> ps = EntityArgument.getPlayers(c, "joueurs");
-                            ps.forEach(CitizenVoice::sendCode);
-                            c.getSource().sendSuccess(() -> Component.literal("§6[Voix] §fCode envoyé à " + ps.size() + " joueur(s)."), true);
+                            for (ServerPlayer p : ps) {
+                                String code = CitizenVoice.sendCode(p);
+                                c.getSource().sendSuccess(() -> codeLine(p.getGameProfile().getName(), code, "envoyé au joueur"), true);
+                            }
                             return ps.size();
                         })))
+                .then(Commands.literal("voir").requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("joueur", EntityArgument.player()).executes(c -> {
+                            ServerPlayer p = EntityArgument.getPlayer(c, "joueur");
+                            VoiceHub hub = CitizenVoice.hub();
+                            String code = hub.currentCode(p.getUUID());
+                            String note = "code en cours";
+                            if (code == null) {
+                                code = hub.createCode(p.getUUID(), p.getGameProfile().getName());
+                                note = "nouveau code, visible par toi seul";
+                            }
+                            String fc = code;
+                            String fn = note;
+                            c.getSource().sendSuccess(() -> codeLine(p.getGameProfile().getName(), fc, fn), false);
+                            c.getSource().sendSuccess(() -> Component.literal("§7Adresse : §e" + hub.config().publicUrl()), false);
+                            return 1;
+                        })))
+                .then(Commands.literal("codes").requires(s -> s.hasPermission(2)).executes(c -> {
+                    List<String[]> l = CitizenVoice.hub().activeCodes();
+                    c.getSource().sendSuccess(() -> Component.literal("§6[Voix] §f" + l.size() + " code(s) valable(s)"
+                            + (l.isEmpty() ? "." : " :")), false);
+                    for (String[] e : l) {
+                        c.getSource().sendSuccess(() -> codeLine(e[0], e[1], "encore " + e[2] + " min"), false);
+                    }
+                    return l.size();
+                }))
                 .then(Commands.literal("deconnecter").requires(s -> s.hasPermission(2))
                         .then(Commands.argument("joueur", EntityArgument.player()).executes(c -> {
                             ServerPlayer p = EntityArgument.getPlayer(c, "joueur");

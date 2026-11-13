@@ -32,7 +32,12 @@ Réglages enregistrés dans `config/citizenvoice-client.properties`.
   liste des joueurs à portée avec qui parle.
 
 ## Commandes admin (niveau 2)
-`/voix statut` · `/voix code <joueurs>` · `/voix deconnecter <joueur>` · `/voix recharger`
+- `/voix codes` : tous les codes encore valables (pseudo → code)
+- `/voix voir <joueur>` : le code d'un joueur, sans le lui envoyer (s'il n'en a pas, un nouveau est créé pour toi seul)
+- `/voix code <joueurs>` : nouveau code envoyé au joueur **et** affiché pour toi
+- `/voix statut` · `/voix deconnecter <joueur>` · `/voix recharger`
+
+Cliquer sur un code dans le chat le copie.
 
 ## Serveur
 - Port du site : **30053** (`port=` dans la config). HTTPS obligatoire pour le micro des navigateurs :
