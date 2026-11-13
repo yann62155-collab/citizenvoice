@@ -89,7 +89,7 @@
     <div style="height:12px"></div>
     <button id="join">Entrer dans le chat vocal</button>
     <p id="loginErr" class="err"></p>
-    <p class="hint" style="font-size:.82rem">🎧 Mets un casque ou des écouteurs pour éviter l'écho.</p>
+    <p class="hint" style="font-size:.82rem">🎧 Avec un casque ou des écouteurs, il n'y a pas d'écho. Sans casque, active le haut-parleur une fois connecté.</p>
   </section>
 
   <section id="resume" class="parchemin hidden">
@@ -118,7 +118,10 @@
         <button id="mute">🎙 Micro actif</button>
         <button id="deaf">🔊 Son actif</button>
       </div>
-      <button id="whisper" class="off">🗣 Voix normale</button>
+      <div class="row">
+        <button id="whisper" class="off">🗣 Voix normale</button>
+        <button id="speaker">📢 Haut-parleur</button>
+      </div>
       <label for="vol">Volume des autres joueurs</label>
       <input id="vol" type="range" min="0" max="200" value="100">
     </div>

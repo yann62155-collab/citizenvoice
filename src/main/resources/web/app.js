@@ -7,6 +7,8 @@
   };
 
   let ws = null, ctx = null, capture = null, player = null, stream = null, wakeLock = null;
+  let outGain = null, spkDest = null, spkEl = null;
+  let speaker = store.get('cv_spk') !== '0'; // haut-parleur actif par défaut
   let authed = false, muted = false, deaf = false, whisper = false, ptt = false, pttDown = false;
   let whisperDist = 3;
   let vadHold = 0, retry = 0, stopping = false, pending = null;
@@ -48,7 +50,13 @@
     capture = new AudioWorkletNode(ctx, 'cv-capture', { numberOfInputs: 1, numberOfOutputs: 0 });
     src.connect(lp).connect(capture);
     player = new AudioWorkletNode(ctx, 'cv-player', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
-    player.connect(ctx.destination);
+    outGain = ctx.createGain();
+    player.connect(outGain);
+    spkDest = ctx.createMediaStreamDestination();
+    spkEl = document.createElement('audio');
+    spkEl.autoplay = true; spkEl.setAttribute('playsinline', ''); spkEl.srcObject = spkDest.stream;
+    document.body.appendChild(spkEl);
+    await applyOutput();
     player.port.postMessage({ volume: $('vol').value / 100 });
     capture.port.onmessage = (e) => onMicFrame(e.data.pcm, e.data.rms);
     if (ctx.state === 'suspended') await ctx.resume();
@@ -138,13 +146,51 @@
     player.port.postMessage({ id, gain, pan, pcm }, [pcm]);
   }
 
+  // ---------- haut-parleur / écouteur
+  // Sur téléphone, quand le micro est ouvert, le système envoie souvent le son vers l'écouteur (celui
+  // des appels, très faible). En mode haut-parleur, le son passe par un lecteur audio classique, avec
+  // un volume renforcé, et on demande au navigateur la sortie « haut-parleur » quand il le permet.
+  async function applyOutput() {
+    if (!ctx || !outGain) return;
+    try { outGain.disconnect(); } catch {}
+    if (speaker) {
+      outGain.gain.value = 1.8;
+      outGain.connect(spkDest);
+      try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch {}
+      try { await spkEl.play(); } catch {}
+      await pickSpeakerSink();
+    } else {
+      outGain.gain.value = 1;
+      outGain.connect(ctx.destination);
+      try { spkEl.pause(); } catch {}
+    }
+    updateSpeakerBtn();
+  }
+
+  async function pickSpeakerSink() {
+    if (!spkEl || typeof spkEl.setSinkId !== 'function' || !navigator.mediaDevices.enumerateDevices) return;
+    try {
+      const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audiooutput');
+      const spk = outs.find((d) => /speaker|haut-parleur|haut parleur|altavoz|lautsprecher/i.test(d.label));
+      if (spk) await spkEl.setSinkId(spk.deviceId);
+    } catch {}
+  }
+
+  function updateSpeakerBtn() {
+    const b = $('speaker');
+    if (!b) return;
+    b.textContent = speaker ? '📢 Haut-parleur' : '🎧 Écouteur / casque';
+    b.classList.toggle('off', !speaker);
+  }
+
   function teardown() {
     authed = false;
     try { ws && ws.close(); } catch {}
     try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {}
     try { ctx && ctx.close(); } catch {}
     try { wakeLock && wakeLock.release(); } catch {}
-    ws = ctx = capture = player = stream = wakeLock = null;
+    try { spkEl && spkEl.remove(); } catch {}
+    ws = ctx = capture = player = stream = wakeLock = outGain = spkDest = spkEl = null;
   }
 
   // ---------- interface
@@ -184,6 +230,12 @@
     $('deaf').classList.toggle('off', deaf);
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'deaf', v: deaf }));
   };
+  $('speaker').onclick = async () => {
+    speaker = !speaker;
+    store.set('cv_spk', speaker ? '1' : '0');
+    await applyOutput();
+  };
+  updateSpeakerBtn();
   $('whisper').onclick = () => {
     whisper = !whisper;
     $('whisper').textContent = whisper ? '🤫 Chuchotement (' + whisperDist + ' blocs)' : '🗣 Voix normale';
@@ -219,6 +271,7 @@
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible') {
       if (ctx && ctx.state !== 'running') { try { await ctx.resume(); } catch {} }
+      if (speaker && spkEl && spkEl.paused) { try { await spkEl.play(); } catch {} }
       if (wakeLock === null && ctx && 'wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
     }
   });
