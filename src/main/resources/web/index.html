@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120d0a">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<title>Citizen — Chat vocal</title>
+<style>
+  :root {
+    --noir: #120d0a; --noir2: #1d1511; --or: #c9a24a; --or-clair: #e8cf8a; --or-sombre: #7d6125;
+    --rouge: #7a1e1e; --rouge-vif: #a32b2b; --parchemin: #e9dcbc; --encre: #2b1d12; --vert: #5f9e4a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: radial-gradient(ellipse at top, #2a1d15 0%, var(--noir) 65%) fixed;
+    color: var(--parchemin); font-family: Georgia, "Times New Roman", serif;
+    display: flex; justify-content: center; padding: env(safe-area-inset-top) 12px 24px;
+  }
+  main { width: 100%; max-width: 460px; }
+  header { text-align: center; margin: 22px 0 14px; }
+  header h1 {
+    font-size: 1.7rem; margin: 0; letter-spacing: .12em; color: var(--or);
+    text-shadow: 0 2px 0 #000, 0 0 18px rgba(201,162,74,.25); font-variant: small-caps;
+  }
+  header p { margin: 4px 0 0; color: var(--or-sombre); font-style: italic; }
+  .parchemin {
+    background: linear-gradient(180deg, #efe3c4, #dcc99d); color: var(--encre);
+    border: 2px solid var(--or-sombre); border-radius: 6px; padding: 18px 16px;
+    box-shadow: inset 0 0 28px rgba(110,75,30,.35), 0 8px 22px rgba(0,0,0,.6); margin-bottom: 14px;
+  }
+  .parchemin h2 { margin: 0 0 10px; font-size: 1.1rem; color: var(--rouge); font-variant: small-caps; letter-spacing: .06em; }
+  .hint { font-size: .92rem; line-height: 1.4; margin: 6px 0; }
+  .code {
+    width: 100%; font: bold 2rem/1 "Courier New", monospace; letter-spacing: .4em; text-align: center;
+    padding: 12px 6px; border: 2px solid var(--or-sombre); border-radius: 6px; background: #fbf4df; color: var(--encre);
+  }
+  button {
+    font-family: inherit; cursor: pointer; border-radius: 6px; border: 2px solid var(--or);
+    background: linear-gradient(180deg, var(--rouge-vif), var(--rouge)); color: var(--or-clair);
+    font-size: 1.05rem; padding: 14px 10px; width: 100%; font-variant: small-caps; letter-spacing: .05em;
+    box-shadow: 0 3px 0 #000;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #000; }
+  button:focus-visible { outline: 3px solid var(--or-clair); outline-offset: 2px; }
+  button.off { background: linear-gradient(180deg, #3a2c22, #241a14); color: #a08c66; border-color: var(--or-sombre); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .err { color: var(--rouge-vif); font-weight: bold; min-height: 1.2em; margin: 8px 0 0; }
+  .status { display: flex; align-items: center; gap: 10px; font-size: 1rem; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: #777; flex: none; box-shadow: 0 0 0 2px rgba(0,0,0,.3); }
+  .dot.on { background: var(--vert); }
+  .dot.warn { background: #c98a1e; }
+  #ptt {
+    height: 120px; font-size: 1.4rem; margin-top: 4px; touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  #ptt.talking { background: linear-gradient(180deg, #4f8f3b, #2f5e22); }
+  .meter { height: 10px; border-radius: 5px; background: #cdb98a; overflow: hidden; border: 1px solid var(--or-sombre); }
+  .meter > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--vert), #d2b04c, var(--rouge-vif)); transition: width .06s; }
+  label { display: block; font-size: .9rem; margin: 12px 0 4px; }
+  input[type=range] { width: 100%; accent-color: var(--rouge); }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed rgba(90,60,30,.35); }
+  li:last-child { border-bottom: 0; }
+  li .n { flex: 1; font-weight: bold; }
+  li .d { font-size: .85rem; color: #6b5131; }
+  li .tag { font-size: .7rem; padding: 2px 6px; border-radius: 10px; background: #cdb98a; color: var(--encre); }
+  li .tag.no { background: #b9a9a0; color: #5b4a40; }
+  .speak { width: 12px; height: 12px; border-radius: 50%; background: transparent; border: 2px solid #a8916a; }
+  .speak.on { background: var(--vert); border-color: var(--vert); box-shadow: 0 0 10px var(--vert); }
+  .toggle { display: flex; gap: 8px; }
+  .toggle button { padding: 10px 6px; font-size: .95rem; }
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--or-sombre); font-size: .8rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>⚜ Citizen ⚜</h1>
+    <p>Chat vocal de proximité</p>
+  </header>
+
+  <section id="login" class="parchemin">
+    <h2>Rejoindre la voix du royaume</h2>
+    <p class="hint">En jeu, tape <b>/voix</b> : un code à 6 chiffres s'affiche dans le chat. Entre-le ici.</p>
+    <input id="code" class="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+    <div style="height:12px"></div>
+    <button id="join">Entrer dans le chat vocal</button>
+    <p id="loginErr" class="err"></p>
+    <p class="hint" style="font-size:.82rem">🎧 Mets un casque ou des écouteurs pour éviter l'écho.</p>
+  </section>
+
+  <section id="resume" class="parchemin hidden">
+    <h2>Bon retour, <span id="resumeName"></span></h2>
+    <button id="resumeBtn">Reprendre le chat vocal</button>
+    <p class="hint" style="text-align:center;margin-top:10px"><a href="#" id="forget" style="color:var(--rouge)">Utiliser un autre code</a></p>
+    <p id="resumeErr" class="err"></p>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="parchemin">
+      <div class="status"><span id="stDot" class="dot"></span><span id="stText">Connexion…</span></div>
+      <p id="appErr" class="err"></p>
+      <div class="toggle" style="margin-top:6px">
+        <button id="modeVoice">Voix auto</button>
+        <button id="modePtt" class="off">Appuyer pour parler</button>
+      </div>
+      <button id="ptt" class="hidden">Maintenir pour parler</button>
+      <div id="vadBox">
+        <label>Ton micro</label>
+        <div class="meter"><div id="meter"></div></div>
+        <label for="sens">Sensibilité du micro</label>
+        <input id="sens" type="range" min="1" max="100" value="70">
+      </div>
+      <div class="row">
+        <button id="mute">🎙 Micro actif</button>
+        <button id="deaf">🔊 Son actif</button>
+      </div>
+      <label for="vol">Volume des autres joueurs</label>
+      <input id="vol" type="range" min="0" max="200" value="100">
+    </div>
+
+    <div class="parchemin">
+      <h2>À portée de voix <span id="dist" style="font-size:.8rem;color:#6b5131"></span></h2>
+      <ul id="near"></ul>
+      <p id="nobody" class="hint">Personne à portée pour l'instant.</p>
+    </div>
+    <button id="leave" class="off">Quitter le chat vocal</button>
+  </section>
+  <footer>Laisse cette page ouverte pendant que tu joues.</footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

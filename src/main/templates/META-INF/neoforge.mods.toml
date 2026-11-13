@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="Ishawakiii"
+description='''
+Chat vocal de proximité dans le navigateur pour les joueurs sans Simple Voice Chat
+(Xbox, téléphone, tablette, PC sans mod), relié à Simple Voice Chat pour les joueurs PC.
+Mod uniquement serveur : ne pas l'envoyer aux joueurs.
+'''
+displayTest="IGNORE_SERVER_VERSION"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.215,)"
+    ordering="NONE"
+    side="SERVER"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="SERVER"
+
+[[dependencies.${mod_id}]]
+    modId="voicechat"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="SERVER"
