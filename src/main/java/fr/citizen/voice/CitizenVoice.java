@@ -77,6 +77,8 @@ public final class CitizenVoice {
             } catch (Throwable t) {
                 LOG.warn("Citizen Bedrock présent mais API introuvable : {}", t.toString());
             }
+        } else {
+            LOG.warn("Citizen Bedrock absent : aucun joueur console détecté, le code ne sera envoyé qu'avec /voix code.");
         }
         if (!ModList.get().isLoaded("voicechat")) {
             LOG.warn("Simple Voice Chat absent : les joueurs navigateur s'entendront entre eux seulement.");
@@ -192,28 +194,42 @@ public final class CitizenVoice {
                 }
                 JOIN_DELAY.remove(en.getKey());
                 ServerPlayer p = srv.getPlayerList().getPlayer(en.getKey());
-                if (p != null && needsWebVoice(p.getUUID()) && !hub.isConnected(p.getUUID())) {
+                if (p != null && isConsole(p.getUUID()) && !hub.isConnected(p.getUUID())) {
                     sendCode(p);
                 }
             }
         }
     }
 
-    /** Joueur console, ou joueur Java sans Simple Voice Chat. */
-    static boolean needsWebVoice(UUID uuid) {
+    /**
+     * Joueur Bedrock (Xbox, PlayStation, Switch, téléphone, tablette) détecté par Citizen Bedrock.
+     * Les joueurs Java PC n'utilisent jamais la page web : ils passent par Simple Voice Chat.
+     */
+    static boolean isConsole(UUID uuid) {
         if (bedrockCheck != null) {
             try {
-                if ((Boolean) bedrockCheck.invoke(null, uuid)) {
-                    return true;
-                }
+                return (Boolean) bedrockCheck.invoke(null, uuid);
             } catch (Throwable ignored) {
             }
         }
-        SvcLink s = hub.svc();
-        return s == null || !s.hasModInstalled(uuid);
+        return false;
     }
 
     // ------------------------------------------------------------------ message avec le code
+
+    /** Message pour un joueur Java PC qui tape /voix : tout passe par Simple Voice Chat. */
+    static void sendPcInfo(ServerPlayer p) {
+        SvcLink s = hub.svc();
+        boolean installed = s != null && s.hasModInstalled(p.getUUID());
+        p.sendSystemMessage(Component.literal("§6§l⚜ Chat vocal de proximité ⚜"));
+        if (installed) {
+            p.sendSystemMessage(Component.literal("§fSur PC, tout passe par §eSimple Voice Chat§f : tu entends déjà les joueurs "
+                    + "console et téléphone près de toi, et ils t'entendent. Touche §eV§f pour les réglages."));
+        } else {
+            p.sendSystemMessage(Component.literal("§fSur PC, le chat vocal passe par le mod §eSimple Voice Chat§f. "
+                    + "Installe-le (ou mets à jour ton launcher) pour parler avec les autres joueurs."));
+        }
+    }
 
     static void sendCode(ServerPlayer p) {
         String code = hub.createCode(p.getUUID(), p.getGameProfile().getName());

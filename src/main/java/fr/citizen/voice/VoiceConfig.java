@@ -12,7 +12,7 @@ import java.util.Properties;
  * Configuration modifiable à chaud ({@code /voix recharger}) : config/citizenvoice/citizenvoice.properties
  */
 public final class VoiceConfig {
-    public int port = 30079;
+    public int port = 30053;
     public String adressePublique = "mc312.boxtoplay.com";
     public boolean https = true;
     /** Fichier .p12 d'un vrai certificat (laisser vide = certificat auto-signé généré automatiquement). */
@@ -21,7 +21,7 @@ public final class VoiceConfig {
     /** Distance d'écoute en blocs ; -1 = reprendre celle de Simple Voice Chat. */
     public double distance = -1;
     public double facteurChuchotement = 0.5;
-    /** Envoyer automatiquement le code aux joueurs qui n'ont pas Simple Voice Chat (console, mobile...). */
+    /** Envoyer automatiquement le code aux joueurs console/mobile (détectés par Citizen Bedrock). */
     public boolean messageAutomatique = true;
     public int dureeCodeMinutes = 10;
     public int dureeSessionHeures = 24;
@@ -85,7 +85,7 @@ public final class VoiceConfig {
                 distance=%s
                 # Distance de chuchotement = distance x ce facteur
                 facteur_chuchotement=%s
-                # Envoyer le code automatiquement aux joueurs sans Simple Voice Chat (Xbox, mobile...)
+                # Envoyer le code automatiquement aux joueurs console/mobile (détectés par Citizen Bedrock)
                 message_automatique=%s
                 # Durée de validité d'un code (minutes) et d'une session navigateur (heures)
                 duree_code_minutes=%d

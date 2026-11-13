@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * /voix                      : reçoit un code pour le chat vocal web
+ * /voix                      : joueur console -> code pour la page web ; joueur PC -> rappel Simple Voice Chat
  * /voix statut               : (admin) qui est connecté par le navigateur
  * /voix code <joueurs>       : (admin) envoie un code à des joueurs
  * /voix deconnecter <joueur> : (admin) coupe la voix web d'un joueur
@@ -26,7 +26,11 @@ final class VoiceCommand {
         LiteralCommandNode<CommandSourceStack> root = d.register(Commands.literal("voix")
                 .executes(c -> {
                     ServerPlayer p = c.getSource().getPlayerOrException();
-                    CitizenVoice.sendCode(p);
+                    if (CitizenVoice.isConsole(p.getUUID())) {
+                        CitizenVoice.sendCode(p);
+                    } else {
+                        CitizenVoice.sendPcInfo(p);
+                    }
                     return 1;
                 })
                 .then(Commands.literal("statut").requires(s -> s.hasPermission(2)).executes(c -> {

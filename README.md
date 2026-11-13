@@ -1,7 +1,7 @@
 # Citizen Voix
 
 Chat vocal de proximité **dans le navigateur** pour les joueurs qui n'ont pas Simple Voice Chat
-(Xbox, PlayStation, Switch, téléphone, tablette, PC sans mod), relié à **Simple Voice Chat** pour les joueurs PC.
+(Xbox, PlayStation, Switch, téléphone, tablette), relié à **Simple Voice Chat** pour les joueurs PC.
 
 NeoForge 21.1.215 · Minecraft 1.21.1 · Java 21 · **mod uniquement serveur** (ne pas l'envoyer aux joueurs).
 
@@ -17,13 +17,14 @@ avec l'icône de parole, exactement comme un autre joueur PC. Les groupes privé
 
 ## Installation (serveur)
 1. Mettre `citizenvoice.jar` dans `mods/` du serveur (à côté de `voicechat`).
-2. Ouvrir/réserver un port chez BoxToPlay (par défaut **30079**) et le mettre dans
+2. Ouvrir/réserver un port chez BoxToPlay (par défaut **30053**) et le mettre dans
    `config/citizenvoice/citizenvoice.properties` si différent.
-3. Redémarrer. La console affiche `Chat vocal web en ligne : https://mc312.boxtoplay.com:30079`.
+3. Redémarrer. La console affiche `Chat vocal web en ligne : https://mc312.boxtoplay.com:30053`.
 
 ## Côté joueur
-- 10 s après la connexion, un joueur sans Simple Voice Chat reçoit dans le chat l'adresse + un code à 6 chiffres.
-- `/voix` donne un nouveau code à tout moment.
+- **Joueurs Java PC : aucune page web.** Ils utilisent Simple Voice Chat comme d'habitude ; `/voix` leur rappelle juste ça.
+- **Joueurs console / téléphone** (détectés par Citizen Bedrock) : 10 s après la connexion, ils reçoivent dans le chat
+  l'adresse + un code à 6 chiffres. `/voix` leur donne un nouveau code à tout moment.
 - Sur la page : entrer le code → autoriser le micro. Le navigateur s'en souvient 24 h (bouton « Reprendre »).
 - Modes « Voix auto » (avec réglage de sensibilité) ou « Appuyer pour parler », micro coupé, sourdine, volume,
   liste des joueurs à portée avec indicateur de parole.
