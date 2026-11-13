@@ -88,6 +88,12 @@ public final class CitizenVoice {
         return hub;
     }
 
+    static String webError;
+
+    static boolean webOnline() {
+        return web != null;
+    }
+
     public static ServerPlayer onlinePlayer(UUID uuid) {
         return ONLINE.get(uuid);
     }
@@ -113,10 +119,12 @@ public final class CitizenVoice {
 
     private static void startWeb() {
         web = new WebServer(hub);
+        webError = null;
         try {
             web.start();
         } catch (Exception ex) {
             LOG.error("Impossible de démarrer le chat vocal web sur le port {} : {}", config.port, ex.toString());
+            webError = ex.getMessage() != null ? ex.getMessage() : ex.toString();
             web = null;
         }
     }

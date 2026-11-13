@@ -55,6 +55,7 @@ public final class VoiceConfig {
         } catch (IOException e) {
             VoiceLog.error("Lecture de la config impossible", e);
         }
+        int version = intOf(p, "version_config", 1);
         port = intOf(p, "port", port);
         adressePublique = p.getProperty("adresse_publique", adressePublique).trim();
         https = Boolean.parseBoolean(p.getProperty("https", String.valueOf(https)).trim());
@@ -65,6 +66,23 @@ public final class VoiceConfig {
         messageAutomatique = Boolean.parseBoolean(p.getProperty("message_automatique", String.valueOf(messageAutomatique)).trim());
         dureeCodeMinutes = intOf(p, "duree_code_minutes", dureeCodeMinutes);
         dureeSessionHeures = intOf(p, "duree_session_heures", dureeSessionHeures);
+        if (version < 2) {
+            // Ancienne config de la 1re version (liée à Simple Voice Chat) : on reprend les nouvelles valeurs
+            if (port == 30079) {
+                port = 30053;
+            }
+            if (distance <= 0) {
+                distance = 20;
+            }
+            distanceChuchotement = doubleOf(p, "distance_chuchotement", 3);
+            VoiceLog.info("Ancienne configuration mise à jour (port " + port + ", distance " + distance + ")");
+        }
+        if (distance <= 0) {
+            distance = 20;
+        }
+        if (distanceChuchotement <= 0) {
+            distanceChuchotement = 3;
+        }
         save();
     }
 
@@ -72,6 +90,7 @@ public final class VoiceConfig {
         String txt = """
                 # Citizen Voix — chat vocal de proximité (mod PC + page web pour console / téléphone)
                 # Modifiable à chaud avec /voix recharger
+                version_config=2
 
                 # Port du site (doit être ouvert chez l'hébergeur, ex. un port réservé BoxToPlay)
                 port=%d

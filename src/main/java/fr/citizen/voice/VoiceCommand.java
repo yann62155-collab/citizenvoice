@@ -51,6 +51,7 @@ final class VoiceCommand {
                     VoiceHub hub = CitizenVoice.hub();
                     List<String> l = hub.connectedNames();
                     c.getSource().sendSuccess(() -> Component.literal("§6[Voix] §fSite : §e" + hub.config().publicUrl()
+                            + (CitizenVoice.webOnline() ? " §a(en ligne)" : " §c(HORS LIGNE : " + CitizenVoice.webError + ")")
                             + " §f| Distance : §e" + Math.round(hub.distance()) + " blocs §f(chuchotement §e"
                             + Math.round(hub.config().distanceChuchotement) + "§f) | Joueurs PC avec le mod : §e" + hub.pcCount()), false);
                     c.getSource().sendSuccess(() -> Component.literal("§6[Voix] §f" + l.size() + " joueur(s) via navigateur"
