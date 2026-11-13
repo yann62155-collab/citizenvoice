@@ -13,13 +13,13 @@ public final class Payloads {
     private Payloads() {
     }
 
-    private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> type(String path) {
+    private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> id(String path) {
         return new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CitizenVoice.MODID, path));
     }
 
     /** Client -> serveur : « j'ai le mod » + état sourdine. */
     public record Hello(int protocol, boolean deaf) implements CustomPacketPayload {
-        public static final Type<Hello> TYPE = type("hello");
+        public static final Type<Hello> TYPE = Payloads.id("hello");
         public static final StreamCodec<FriendlyByteBuf, Hello> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeVarInt(p.protocol);
@@ -35,7 +35,7 @@ public final class Payloads {
 
     /** Client -> serveur : une trame de micro. */
     public record Mic(byte[] ulaw, boolean whisper) implements CustomPacketPayload {
-        public static final Type<Mic> TYPE = type("mic");
+        public static final Type<Mic> TYPE = Payloads.id("mic");
         public static final StreamCodec<FriendlyByteBuf, Mic> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeByteArray(p.ulaw);
@@ -51,7 +51,7 @@ public final class Payloads {
 
     /** Serveur -> client : la voix d'un joueur proche, déjà atténuée (gain) et placée gauche/droite (pan). */
     public record Voice(UUID speaker, float gain, float pan, byte[] ulaw) implements CustomPacketPayload {
-        public static final Type<Voice> TYPE = type("voice");
+        public static final Type<Voice> TYPE = Payloads.id("voice");
         public static final StreamCodec<FriendlyByteBuf, Voice> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeUUID(p.speaker);
@@ -69,7 +69,7 @@ public final class Payloads {
 
     /** Serveur -> client : réponse au Hello (le serveur a bien le chat vocal) + distances. */
     public record Welcome(float distance, float whisperDistance) implements CustomPacketPayload {
-        public static final Type<Welcome> TYPE = type("welcome");
+        public static final Type<Welcome> TYPE = Payloads.id("welcome");
         public static final StreamCodec<FriendlyByteBuf, Welcome> CODEC = StreamCodec.of(
                 (buf, p) -> {
                     buf.writeFloat(p.distance);
