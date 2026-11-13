@@ -1,6 +1,7 @@
 package fr.citizen.voice.web;
 
 import fr.citizen.voice.VoiceHub;
+import fr.citizen.voice.VoiceListener;
 import fr.citizen.voice.VoiceLog;
 
 import java.io.ByteArrayOutputStream;
@@ -20,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Une connexion WebSocket (RFC 6455) écrite à la main. Lecture sur le thread de la connexion,
  * écriture sur un thread dédié avec une file : un téléphone lent ne bloque jamais le serveur.
  */
-public final class WsConnection {
+public final class WsConnection implements VoiceListener {
     private static final byte[] CLOSE = {};
     private static final int MAX_AUDIO_QUEUED = 25; // 0,5 s : au-delà on jette (mieux vaut une coupure qu'un retard)
 
@@ -28,6 +29,7 @@ public final class WsConnection {
     public volatile String name = "?";
     public volatile boolean muted;
     public volatile boolean deaf;
+    public volatile boolean whisper;
     public final String remoteIp;
 
     private final Socket socket;
@@ -46,8 +48,24 @@ public final class WsConnection {
         this.remoteIp = remoteIp;
     }
 
+    @Override
     public boolean isOpen() {
         return open;
+    }
+
+    @Override
+    public UUID listenerUuid() {
+        return uuid;
+    }
+
+    @Override
+    public boolean isDeaf() {
+        return deaf;
+    }
+
+    @Override
+    public void sendVoice(UUID speaker, float gain, float pan, short[] pcm16, Encoded enc) {
+        sendAudio(VoiceHub.webFrame(speaker, gain, pan, enc.le16()));
     }
 
     public void sendText(String s) {

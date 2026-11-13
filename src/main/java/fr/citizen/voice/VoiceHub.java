@@ -15,8 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Cœur du chat vocal : codes d'accès, sessions navigateur et routage de la voix
- * (navigateur -> navigateur, navigateur -> Simple Voice Chat, Simple Voice Chat -> navigateur).
+ * Cœur du chat vocal : codes d'accès, sessions navigateur et routage de la voix entre
+ * joueurs PC (mod) et joueurs console/téléphone (page web), selon la distance.
  */
 public final class VoiceHub {
     private record Pending(UUID uuid, String name, long expires) {
@@ -29,12 +29,13 @@ public final class VoiceHub {
     private static final long SPEAK_MS = 350;
 
     private final VoiceConfig config;
-    private volatile SvcLink svc;
 
     private final Map<String, Pending> codes = new ConcurrentHashMap<>();
     private final Map<String, Token> tokens = new ConcurrentHashMap<>();
-    /** Un seul navigateur actif par joueur. */
+    /** Navigateurs (un seul par joueur). */
     private final Map<UUID, WsConnection> clients = new ConcurrentHashMap<>();
+    /** Joueurs PC avec le mod. */
+    private final Map<UUID, VoiceListener> pcClients = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastSpoke = new ConcurrentHashMap<>();
     private final Map<String, int[]> failsByIp = new ConcurrentHashMap<>();
     private volatile long failsWindowStart = System.currentTimeMillis();
@@ -43,27 +44,46 @@ public final class VoiceHub {
         this.config = config;
     }
 
-    public void setSvc(SvcLink link) {
-        this.svc = link;
-    }
-
-    public SvcLink svc() {
-        return svc;
-    }
-
     public VoiceConfig config() {
         return config;
     }
 
     public double distance() {
-        if (config.distance > 0) {
-            return config.distance;
-        }
-        SvcLink s = svc;
-        return s != null ? s.defaultDistance() : 48.0;
+        return config.distance;
     }
 
-    // ------------------------------------------------------------------ codes / sessions
+    // ------------------------------------------------------------------ joueurs PC
+
+    public void registerPc(VoiceListener l) {
+        pcClients.put(l.listenerUuid(), l);
+    }
+
+    public void unregisterPc(UUID uuid) {
+        pcClients.remove(uuid);
+    }
+
+    public boolean hasPcMod(UUID uuid) {
+        return pcClients.containsKey(uuid);
+    }
+
+    public int pcCount() {
+        return pcClients.size();
+    }
+
+    /** Trame micro d'un joueur PC (PCM 16 kHz, 320 échantillons). */
+    public void onPcMic(UUID sender, short[] pcm16, boolean whisper) {
+        if (pcm16.length != Audio.WEB_FRAME) {
+            return;
+        }
+        Players.Snap from = Players.get(sender);
+        if (from == null || from.spectator()) {
+            return;
+        }
+        lastSpoke.put(sender, System.currentTimeMillis());
+        route(sender, from, pcm16, whisper);
+    }
+
+    // ------------------------------------------------------------------ codes / sessions web
 
     public String createCode(UUID uuid, String name) {
         codes.values().removeIf(p -> p.uuid.equals(uuid) || p.expires < System.currentTimeMillis());
@@ -84,7 +104,7 @@ public final class VoiceHub {
         List<String> l = new ArrayList<>();
         for (WsConnection c : clients.values()) {
             if (c.isOpen()) {
-                l.add(c.name + (c.muted ? " (micro coupé)" : "") + (c.deaf ? " (sourdine)" : "") + " — " + c.remoteIp);
+                l.add(c.name + (c.muted ? " (micro coupé)" : "") + (c.deaf ? " (sourdine)" : ""));
             }
         }
         return l;
@@ -95,10 +115,6 @@ public final class VoiceHub {
         if (c != null) {
             c.sendText("{\"t\":\"err\",\"msg\":" + json(reason) + ",\"fatal\":true}");
             c.close();
-        }
-        SvcLink s = svc;
-        if (s != null) {
-            s.stopWebVoice(uuid);
         }
     }
 
@@ -138,21 +154,22 @@ public final class VoiceHub {
         if (t == null) {
             return;
         }
+        Boolean v = bool(msg, "v");
         switch (t) {
             case "auth" -> auth(c, field(msg, "code"), field(msg, "token"));
             case "mute" -> {
-                Boolean v = bool(msg, "v");
                 if (v != null) {
                     c.muted = v;
-                    if (v && c.uuid != null && svc != null) {
-                        svc.stopWebVoice(c.uuid);
-                    }
                 }
             }
             case "deaf" -> {
-                Boolean v = bool(msg, "v");
                 if (v != null) {
                     c.deaf = v;
+                }
+            }
+            case "whisper" -> {
+                if (v != null) {
+                    c.whisper = v;
                 }
             }
             case "ping" -> c.sendText("{\"t\":\"pong\"}");
@@ -206,7 +223,9 @@ public final class VoiceHub {
             uuid = p.uuid;
             name = p.name;
             tokens.values().removeIf(x -> x.expires < now);
-            token = HexFormat.of().formatHex(randomBytes(24));
+            byte[] b = new byte[24];
+            RNG.nextBytes(b);
+            token = HexFormat.of().formatHex(b);
             tokens.put(token, new Token(uuid, name, now + config.dureeSessionHeures * 3_600_000L));
         } else {
             return;
@@ -219,17 +238,13 @@ public final class VoiceHub {
             old.close();
         }
         c.sendText("{\"t\":\"ok\",\"name\":" + json(name) + ",\"token\":" + json(token)
-                + ",\"distance\":" + Math.round(distance()) + "}");
+                + ",\"distance\":" + Math.round(distance()) + ",\"whisper\":" + Math.round(config.distanceChuchotement) + "}");
         VoiceLog.info(name + " a rejoint le chat vocal web (" + c.remoteIp + ")");
     }
 
     public void onClose(WsConnection c) {
         if (c.uuid != null && clients.remove(c.uuid, c)) {
             VoiceLog.info(c.name + " a quitté le chat vocal web");
-            SvcLink s = svc;
-            if (s != null) {
-                s.stopWebVoice(c.uuid);
-            }
         }
     }
 
@@ -243,66 +258,49 @@ public final class VoiceHub {
             return; // pas en jeu : personne ne peut l'entendre
         }
         lastSpoke.put(c.uuid, System.currentTimeMillis());
-        // 1) vers les autres navigateurs proches
-        routeToWeb(c.uuid, me, data, distance());
-        // 2) vers les joueurs PC (Simple Voice Chat), à la position du personnage
-        SvcLink s = svc;
-        if (s != null) {
-            try {
-                s.sendWebVoice(c.uuid, Audio.up16to48(Audio.bytesToShorts(data)));
-            } catch (Throwable t) {
-                VoiceLog.error("Envoi vers Simple Voice Chat impossible", t);
-            }
-        }
+        route(c.uuid, me, Audio.bytesToShorts(data), c.whisper);
     }
 
-    // ------------------------------------------------------------------ voix des joueurs PC
+    // ------------------------------------------------------------------ routage
 
-    /** Appelé par le pont Simple Voice Chat avec la voix décodée d'un joueur PC (48 kHz). */
-    public void onSvcVoice(UUID sender, short[] pcm48, boolean whisper) {
-        Players.Snap from = Players.get(sender);
-        if (from == null || clients.isEmpty()) {
-            return;
-        }
-        lastSpoke.put(sender, System.currentTimeMillis());
-        short[] pcm16 = Audio.down48to16(pcm48);
-        if (pcm16.length != Audio.WEB_FRAME) {
-            return;
-        }
-        byte[] pcm = new byte[pcm16.length * 2];
-        ByteBuffer.wrap(pcm).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm16);
+    private void route(UUID sender, Players.Snap from, short[] pcm, boolean whisper) {
         double max = whisper ? config.distanceChuchotement : distance();
-        routeToWeb(sender, from, pcm, max);
-    }
-
-    public boolean hasWebListeners() {
-        return !clients.isEmpty();
-    }
-
-    public void markSpeaking(UUID uuid) {
-        lastSpoke.put(uuid, System.currentTimeMillis());
-    }
-
-    private void routeToWeb(UUID sender, Players.Snap from, byte[] pcm, double max) {
+        VoiceListener.Encoded enc = new VoiceListener.Encoded(pcm);
         for (WsConnection l : clients.values()) {
-            if (l.deaf || l.uuid == null || l.uuid.equals(sender) || !l.isOpen()) {
-                continue;
-            }
-            Players.Snap me = Players.get(l.uuid);
-            if (me == null || !me.level().equals(from.level())) {
-                continue;
-            }
-            double d = me.distTo(from);
-            float g = Audio.gain(d, max);
-            if (g <= 0f) {
-                continue;
-            }
-            float pan = Audio.pan(me.x(), me.z(), me.yaw(), from.x(), from.z());
-            ByteBuffer bb = ByteBuffer.allocate(16 + pcm.length).order(ByteOrder.LITTLE_ENDIAN);
-            bb.put((byte) 1).put((byte) 0).put((byte) 0).put((byte) 0);
-            bb.putInt(sender.hashCode()).putFloat(g).putFloat(pan).put(pcm);
-            l.sendAudio(bb.array());
+            deliver(l, sender, from, pcm, enc, max);
         }
+        for (VoiceListener l : pcClients.values()) {
+            deliver(l, sender, from, pcm, enc, max);
+        }
+    }
+
+    private static void deliver(VoiceListener l, UUID sender, Players.Snap from, short[] pcm, VoiceListener.Encoded enc, double max) {
+        UUID lu = l.listenerUuid();
+        if (lu == null || lu.equals(sender) || l.isDeaf() || !l.isOpen()) {
+            return;
+        }
+        Players.Snap me = Players.get(lu);
+        if (me == null || !me.level().equals(from.level())) {
+            return;
+        }
+        float g = Audio.gain(me.distTo(from), max);
+        if (g <= 0f) {
+            return;
+        }
+        float pan = Audio.pan(me.x(), me.z(), me.yaw(), from.x(), from.z());
+        try {
+            l.sendVoice(sender, g, pan, pcm, enc);
+        } catch (Throwable t) {
+            VoiceLog.error("Envoi de la voix impossible", t);
+        }
+    }
+
+    /** Trame binaire pour le navigateur : [1,0,0,0][id int32][gain f32][pan f32][PCM16 LE]. */
+    public static byte[] webFrame(UUID speaker, float gain, float pan, byte[] le16) {
+        ByteBuffer bb = ByteBuffer.allocate(16 + le16.length).order(ByteOrder.LITTLE_ENDIAN);
+        bb.put((byte) 1).put((byte) 0).put((byte) 0).put((byte) 0);
+        bb.putInt(speaker.hashCode()).putFloat(gain).putFloat(pan).put(le16);
+        return bb.array();
     }
 
     // ------------------------------------------------------------------ état affiché sur la page
@@ -332,13 +330,12 @@ public final class VoiceHub {
                         sb.append(',');
                     }
                     first = false;
-                    SvcLink s = svc;
-                    boolean hasVoice = isConnected(o.uuid()) || (s != null && s.hasModInstalled(o.uuid()));
+                    boolean web = isConnected(o.uuid());
                     sb.append("{\"n\":").append(json(o.name()))
                             .append(",\"d\":").append(Math.round(o.distTo(me)))
                             .append(",\"s\":").append(isSpeaking(o.uuid(), now))
-                            .append(",\"v\":").append(hasVoice)
-                            .append(",\"w\":").append(isConnected(o.uuid())).append('}');
+                            .append(",\"v\":").append(web || hasPcMod(o.uuid()))
+                            .append(",\"w\":").append(web).append('}');
                 }
             }
             sb.append("]}");
@@ -346,18 +343,12 @@ public final class VoiceHub {
         }
     }
 
-    private boolean isSpeaking(UUID u, long now) {
+    public boolean isSpeaking(UUID u, long now) {
         Long t = lastSpoke.get(u);
         return t != null && now - t < SPEAK_MS;
     }
 
     // ------------------------------------------------------------------ utilitaires
-
-    private static byte[] randomBytes(int n) {
-        byte[] b = new byte[n];
-        RNG.nextBytes(b);
-        return b;
-    }
 
     public static String json(String s) {
         StringBuilder sb = new StringBuilder("\"");

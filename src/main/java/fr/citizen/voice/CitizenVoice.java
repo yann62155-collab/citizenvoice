@@ -1,6 +1,7 @@
 package fr.citizen.voice;
 
 import com.mojang.logging.LogUtils;
+import fr.citizen.voice.net.VoiceNetwork;
 import fr.citizen.voice.web.WebServer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -34,8 +35,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Citizen Voix : chat vocal de proximité dans le navigateur pour les joueurs qui n'ont pas
- * Simple Voice Chat (Xbox, téléphone, tablette, PC sans mod). Mod uniquement serveur.
+ * Citizen Voix : chat vocal de proximité du serveur Citizen.
+ * Joueurs PC : ce mod installé dans le jeu. Joueurs console / téléphone : page web servie par ce mod.
  */
 @Mod(CitizenVoice.MODID)
 public final class CitizenVoice {
@@ -64,6 +65,7 @@ public final class CitizenVoice {
         });
         config = new VoiceConfig(FMLPaths.CONFIGDIR.get().resolve("citizenvoice").resolve("citizenvoice.properties"));
         hub = new VoiceHub(config);
+        modBus.addListener(VoiceNetwork::register);
         NeoForge.EVENT_BUS.addListener(CitizenVoice::onServerStarted);
         NeoForge.EVENT_BUS.addListener(CitizenVoice::onServerStopping);
         NeoForge.EVENT_BUS.addListener(CitizenVoice::onTick);
@@ -79,9 +81,6 @@ public final class CitizenVoice {
             }
         } else {
             LOG.warn("Citizen Bedrock absent : aucun joueur console détecté, le code ne sera envoyé qu'avec /voix code.");
-        }
-        if (!ModList.get().isLoaded("voicechat")) {
-            LOG.warn("Simple Voice Chat absent : les joueurs navigateur s'entendront entre eux seulement.");
         }
     }
 
@@ -150,7 +149,7 @@ public final class CitizenVoice {
         if (e.getEntity() instanceof ServerPlayer p) {
             ONLINE.put(p.getUUID(), p);
             if (config.messageAutomatique) {
-                JOIN_DELAY.put(p.getUUID(), 200); // 10 s : laisse le temps à Simple Voice Chat de se connecter
+                JOIN_DELAY.put(p.getUUID(), 200); // 10 s après l'arrivée
             }
         }
     }
@@ -166,10 +165,7 @@ public final class CitizenVoice {
         ONLINE.remove(u);
         JOIN_DELAY.remove(u);
         Players.remove(u);
-        SvcLink s = hub.svc();
-        if (s != null) {
-            s.stopWebVoice(u);
-        }
+        hub.unregisterPc(u);
     }
 
     private static void onTick(ServerTickEvent.Post e) {
@@ -203,7 +199,7 @@ public final class CitizenVoice {
 
     /**
      * Joueur Bedrock (Xbox, PlayStation, Switch, téléphone, tablette) détecté par Citizen Bedrock.
-     * Les joueurs Java PC n'utilisent jamais la page web : ils passent par Simple Voice Chat.
+     * Les joueurs Java PC n'utilisent jamais la page web : ils ont le mod dans leur jeu.
      */
     static boolean isConsole(UUID uuid) {
         if (bedrockCheck != null) {
@@ -217,17 +213,16 @@ public final class CitizenVoice {
 
     // ------------------------------------------------------------------ message avec le code
 
-    /** Message pour un joueur Java PC qui tape /voix : tout passe par Simple Voice Chat. */
+    /** Message pour un joueur Java PC qui tape /voix. */
     static void sendPcInfo(ServerPlayer p) {
-        SvcLink s = hub.svc();
-        boolean installed = s != null && s.hasModInstalled(p.getUUID());
         p.sendSystemMessage(Component.literal("§6§l⚜ Chat vocal de proximité ⚜"));
-        if (installed) {
-            p.sendSystemMessage(Component.literal("§fSur PC, tout passe par §eSimple Voice Chat§f : tu entends déjà les joueurs "
-                    + "console et téléphone près de toi, et ils t'entendent. Touche §eV§f pour les réglages."));
+        if (hub.hasPcMod(p.getUUID())) {
+            p.sendSystemMessage(Component.literal("§fLe chat vocal est actif : les joueurs à moins de §e"
+                    + Math.round(hub.distance()) + " blocs§f t'entendent (§e" + Math.round(config.distanceChuchotement)
+                    + " blocs§f en chuchotant). Touche §eV§f pour les réglages (micro, sortie son, volumes)."));
         } else {
-            p.sendSystemMessage(Component.literal("§fSur PC, le chat vocal passe par le mod §eSimple Voice Chat§f. "
-                    + "Installe-le (ou mets à jour ton launcher) pour parler avec les autres joueurs."));
+            p.sendSystemMessage(Component.literal("§fIl te manque le mod §eCitizen Voix§f dans ton jeu. "
+                    + "Mets à jour tes mods Citizen puis relance le jeu."));
         }
     }
 

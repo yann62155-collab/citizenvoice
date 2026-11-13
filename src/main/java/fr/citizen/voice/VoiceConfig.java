@@ -70,7 +70,7 @@ public final class VoiceConfig {
 
     public void save() {
         String txt = """
-                # Citizen Voix — chat vocal de proximité dans le navigateur (téléphone, Xbox, tablette, PC sans mod)
+                # Citizen Voix — chat vocal de proximité (mod PC + page web pour console / téléphone)
                 # Modifiable à chaud avec /voix recharger
 
                 # Port du site (doit être ouvert chez l'hébergeur, ex. un port réservé BoxToPlay)

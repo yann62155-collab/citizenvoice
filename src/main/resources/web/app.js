@@ -7,7 +7,8 @@
   };
 
   let ws = null, ctx = null, capture = null, player = null, stream = null, wakeLock = null;
-  let authed = false, muted = false, deaf = false, ptt = false, pttDown = false;
+  let authed = false, muted = false, deaf = false, whisper = false, ptt = false, pttDown = false;
+  let whisperDist = 3;
   let vadHold = 0, retry = 0, stopping = false, pending = null;
 
   const show = (id) => ['login', 'resume', 'app'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
@@ -99,9 +100,12 @@
         store.set('cv_token', m.token); store.set('cv_name', m.name);
         pending = { t: 'auth', token: m.token };
         $('dist').textContent = '(' + m.distance + ' blocs)';
+        whisperDist = m.whisper || 3;
+        $('whisper').textContent = whisper ? '🤫 Chuchotement (' + whisperDist + ' blocs)' : '🗣 Voix normale';
         show('app'); setErr('appErr', '');
         ws.send(JSON.stringify({ t: 'mute', v: muted }));
         ws.send(JSON.stringify({ t: 'deaf', v: deaf }));
+        ws.send(JSON.stringify({ t: 'whisper', v: whisper }));
       } else if (m.t === 'state') renderState(m);
       else if (m.t === 'err') {
         if (!authed) {
@@ -151,7 +155,7 @@
 
   function renderState(m) {
     if (!m.inGame) setStatus('warn', 'Connecté — rejoins le serveur en jeu pour parler');
-    else setStatus('on', muted ? 'En jeu — micro coupé' : (m.speaking ? 'En jeu — tu parles…' : 'En jeu — on t’entend'));
+    else setStatus('on', muted ? 'En jeu — micro coupé' : (m.speaking ? (whisper ? 'En jeu — tu chuchotes…' : 'En jeu — tu parles…') : 'En jeu — on t’entend'));
     const ul = $('near');
     ul.textContent = '';
     for (const p of m.near) {
@@ -161,7 +165,7 @@
       const d = document.createElement('span'); d.className = 'd'; d.textContent = p.d + ' m';
       const tag = document.createElement('span');
       tag.className = 'tag' + (p.v ? '' : ' no');
-      tag.textContent = p.w ? 'navigateur' : (p.v ? 'mod vocal' : 'sans voix');
+      tag.textContent = p.w ? 'téléphone/console' : (p.v ? 'PC' : 'sans voix');
       li.append(dot, n, tag, d);
       ul.append(li);
     }
@@ -179,6 +183,12 @@
     $('deaf').textContent = deaf ? '🔈 Sourdine' : '🔊 Son actif';
     $('deaf').classList.toggle('off', deaf);
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'deaf', v: deaf }));
+  };
+  $('whisper').onclick = () => {
+    whisper = !whisper;
+    $('whisper').textContent = whisper ? '🤫 Chuchotement (' + whisperDist + ' blocs)' : '🗣 Voix normale';
+    $('whisper').classList.toggle('off', !whisper);
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'whisper', v: whisper }));
   };
   $('vol').oninput = () => player && player.port.postMessage({ volume: $('vol').value / 100 });
 

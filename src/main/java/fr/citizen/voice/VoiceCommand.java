@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * /voix                      : joueur console -> code pour la page web ; joueur PC -> rappel Simple Voice Chat
+ * /voix                      : joueur console -> code pour la page web ; joueur PC -> rappel des touches
  * /voix statut               : (admin) qui est connecté par le navigateur
  * /voix code <joueurs>       : (admin) envoie un code à des joueurs
  * /voix deconnecter <joueur> : (admin) coupe la voix web d'un joueur
@@ -37,8 +37,8 @@ final class VoiceCommand {
                     VoiceHub hub = CitizenVoice.hub();
                     List<String> l = hub.connectedNames();
                     c.getSource().sendSuccess(() -> Component.literal("§6[Voix] §fSite : §e" + hub.config().publicUrl()
-                            + " §f| Simple Voice Chat : " + (hub.svc() != null ? "§arelié" : "§cabsent")
-                            + " §f| Distance : §e" + Math.round(hub.distance()) + " blocs"), false);
+                            + " §f| Distance : §e" + Math.round(hub.distance()) + " blocs §f(chuchotement §e"
+                            + Math.round(hub.config().distanceChuchotement) + "§f) | Joueurs PC avec le mod : §e" + hub.pcCount()), false);
                     c.getSource().sendSuccess(() -> Component.literal("§6[Voix] §f" + l.size() + " joueur(s) via navigateur"
                             + (l.isEmpty() ? "" : " : §e" + String.join("§f, §e", l))), false);
                     return l.size();

@@ -27,11 +27,6 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // API de Simple Voice Chat (utilisée seulement à la compilation : le mod voicechat la fournit sur le serveur)
-    maven {
-        name = "henkelmax"
-        url = "https://maven.maxhenkel.de/repository/public"
-    }
 }
 
 base {
@@ -120,7 +115,6 @@ configurations {
 }
 
 dependencies {
-    compileOnly "de.maxhenkel.voicechat:voicechat-api:${voicechat_api_version}"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

@@ -2,7 +2,7 @@ package fr.citizen.voice;
 
 /**
  * Outils audio. Le navigateur échange du PCM 16 bits mono 16 kHz (320 échantillons = 20 ms) ;
- * Simple Voice Chat travaille en Opus 48 kHz (960 échantillons = 20 ms).
+ * Le mod PC échange la même chose compressée en G.711 µ-law (8 bits par échantillon, 16 Ko/s).
  */
 public final class Audio {
     public static final int WEB_RATE = 16000;
@@ -68,5 +68,58 @@ public final class Audio {
         double rx = -Math.cos(yaw);
         double rz = -Math.sin(yaw);
         return (float) Math.max(-1, Math.min(1, (dx * rx + dz * rz) / len));
+    }
+
+    // ---- G.711 µ-law : compression 2:1 sans dépendance, qualité « téléphone HD » à 16 kHz
+    private static final int BIAS = 0x84;
+    private static final int CLIP = 32635;
+    private static final short[] ULAW_TABLE = new short[256];
+
+    static {
+        for (int i = 0; i < 256; i++) {
+            int u = ~i & 0xFF;
+            int t = ((u & 0x0F) << 3) + BIAS;
+            t <<= (u & 0x70) >> 4;
+            ULAW_TABLE[i] = (short) ((u & 0x80) != 0 ? BIAS - t : t - BIAS);
+        }
+    }
+
+    public static byte[] toUlaw(short[] pcm) {
+        byte[] out = new byte[pcm.length];
+        for (int i = 0; i < pcm.length; i++) {
+            int s = pcm[i];
+            int sign = (s >> 8) & 0x80;
+            if (sign != 0) {
+                s = -s;
+            }
+            if (s > CLIP) {
+                s = CLIP;
+            }
+            s += BIAS;
+            int exp = 7;
+            for (int mask = 0x4000; (s & mask) == 0 && exp > 0; mask >>= 1) {
+                exp--;
+            }
+            int mant = (s >> (exp + 3)) & 0x0F;
+            out[i] = (byte) ~(sign | (exp << 4) | mant);
+        }
+        return out;
+    }
+
+    public static short[] fromUlaw(byte[] u) {
+        short[] out = new short[u.length];
+        for (int i = 0; i < u.length; i++) {
+            out[i] = ULAW_TABLE[u[i] & 0xFF];
+        }
+        return out;
+    }
+
+    public static byte[] shortsToBytes(short[] s) {
+        byte[] b = new byte[s.length * 2];
+        for (int i = 0; i < s.length; i++) {
+            b[2 * i] = (byte) s[i];
+            b[2 * i + 1] = (byte) (s[i] >> 8);
+        }
+        return b;
     }
 }
