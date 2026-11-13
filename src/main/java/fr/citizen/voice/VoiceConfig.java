@@ -18,9 +18,10 @@ public final class VoiceConfig {
     /** Fichier .p12 d'un vrai certificat (laisser vide = certificat auto-signé généré automatiquement). */
     public String certificat = "";
     public String certificatMotDePasse = "";
-    /** Distance d'écoute en blocs ; -1 = reprendre celle de Simple Voice Chat. */
-    public double distance = -1;
-    public double facteurChuchotement = 0.5;
+    /** Distance d'écoute en blocs. */
+    public double distance = 20;
+    /** Distance quand un joueur chuchote. */
+    public double distanceChuchotement = 3;
     /** Envoyer automatiquement le code aux joueurs console/mobile (détectés par Citizen Bedrock). */
     public boolean messageAutomatique = true;
     public int dureeCodeMinutes = 10;
@@ -60,7 +61,7 @@ public final class VoiceConfig {
         certificat = p.getProperty("certificat", certificat).trim();
         certificatMotDePasse = p.getProperty("certificat_mot_de_passe", certificatMotDePasse);
         distance = doubleOf(p, "distance", distance);
-        facteurChuchotement = doubleOf(p, "facteur_chuchotement", facteurChuchotement);
+        distanceChuchotement = doubleOf(p, "distance_chuchotement", distanceChuchotement);
         messageAutomatique = Boolean.parseBoolean(p.getProperty("message_automatique", String.valueOf(messageAutomatique)).trim());
         dureeCodeMinutes = intOf(p, "duree_code_minutes", dureeCodeMinutes);
         dureeSessionHeures = intOf(p, "duree_session_heures", dureeSessionHeures);
@@ -81,17 +82,17 @@ public final class VoiceConfig {
                 # Vrai certificat au format .p12 (chemin relatif au dossier config/citizenvoice). Vide = auto-signé.
                 certificat=%s
                 certificat_mot_de_passe=%s
-                # Distance d'écoute en blocs (-1 = la même que Simple Voice Chat)
+                # Distance d'écoute en blocs (voix normale)
                 distance=%s
-                # Distance de chuchotement = distance x ce facteur
-                facteur_chuchotement=%s
+                # Distance d'écoute quand un joueur chuchote (en blocs)
+                distance_chuchotement=%s
                 # Envoyer le code automatiquement aux joueurs console/mobile (détectés par Citizen Bedrock)
                 message_automatique=%s
                 # Durée de validité d'un code (minutes) et d'une session navigateur (heures)
                 duree_code_minutes=%d
                 duree_session_heures=%d
                 """.formatted(port, adressePublique, https, certificat, certificatMotDePasse, distance,
-                facteurChuchotement, messageAutomatique, dureeCodeMinutes, dureeSessionHeures);
+                distanceChuchotement, messageAutomatique, dureeCodeMinutes, dureeSessionHeures);
         try (Writer w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             w.write(txt);
         } catch (IOException e) {

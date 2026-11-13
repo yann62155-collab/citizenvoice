@@ -271,7 +271,7 @@ public final class VoiceHub {
         }
         byte[] pcm = new byte[pcm16.length * 2];
         ByteBuffer.wrap(pcm).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(pcm16);
-        double max = distance() * (whisper ? config.facteurChuchotement : 1.0);
+        double max = whisper ? config.distanceChuchotement : distance();
         routeToWeb(sender, from, pcm, max);
     }
 

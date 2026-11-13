@@ -29,6 +29,11 @@ avec l'icône de parole, exactement comme un autre joueur PC. Les groupes privé
 - Modes « Voix auto » (avec réglage de sensibilité) ou « Appuyer pour parler », micro coupé, sourdine, volume,
   liste des joueurs à portée avec indicateur de parole.
 
+## Distances
+Voix normale : **20 blocs** · chuchotement : **3 blocs** (`distance` et `distance_chuchotement` dans la config).
+Entre deux joueurs PC, c'est la config de Simple Voice Chat qui compte : dans `config/voicechat/voicechat-server.properties`,
+mettre `max_voice_distance=20` et `whisper_distance=3`.
+
 ## Commandes admin (niveau 2)
 `/voix statut` · `/voix code <joueurs>` · `/voix deconnecter <joueur>` · `/voix recharger`
 
