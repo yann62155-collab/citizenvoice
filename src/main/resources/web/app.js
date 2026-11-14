@@ -7,7 +7,8 @@
   };
 
   let ws = null, ctx = null, capture = null, player = null, stream = null, wakeLock = null;
-  let outGain = null, spkDest = null, spkEl = null;
+  let outGain = null, spkDest = null, spkEl = null, micSrc = null, micLp = null;
+  let noiseOn = store.get('cv_ns') !== '0'; // réducteur de bruit actif par défaut
   let speaker = store.get('cv_spk') !== '0'; // haut-parleur actif par défaut
   let authed = false, muted = false, deaf = false, whisper = false, ptt = false, pttDown = false;
   let whisperDist = 3;
@@ -39,16 +40,15 @@
     if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("Ce navigateur bloque le micro sur cette page. Ouvre l'adresse en https:// (et accepte le certificat).");
     }
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
-    });
+    stream = await openMic();
     ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     await ctx.audioWorklet.addModule('/worklet.js');
-    const src = ctx.createMediaStreamSource(stream);
+    micSrc = ctx.createMediaStreamSource(stream);
     const lp = ctx.createBiquadFilter(); // anti-repliement avant le passage à 16 kHz
     lp.type = 'lowpass'; lp.frequency.value = 7000;
+    micLp = lp;
     capture = new AudioWorkletNode(ctx, 'cv-capture', { numberOfInputs: 1, numberOfOutputs: 0 });
-    src.connect(lp).connect(capture);
+    micSrc.connect(lp).connect(capture);
     player = new AudioWorkletNode(ctx, 'cv-player', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     outGain = ctx.createGain();
     player.connect(outGain);
@@ -146,6 +146,43 @@
     player.port.postMessage({ id, gain, pan, pcm }, [pcm]);
   }
 
+  // ---------- micro et réducteur de bruit
+  function openMic() {
+    return navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: noiseOn, autoGainControl: true, channelCount: 1 },
+    });
+  }
+
+  // Réducteur de bruit parasite : celui du téléphone/navigateur (très efficace), activable à volonté.
+  async function setNoise(on) {
+    noiseOn = on;
+    store.set('cv_ns', on ? '1' : '0');
+    updateNoiseBtn();
+    if (!stream || !ctx) return;
+    const track = stream.getAudioTracks()[0];
+    try {
+      await track.applyConstraints({ echoCancellation: true, noiseSuppression: on, autoGainControl: true });
+      const st = track.getSettings ? track.getSettings() : {};
+      if (st.noiseSuppression === undefined || st.noiseSuppression === on) return;
+    } catch {}
+    // Le navigateur n'a pas pu changer le réglage à chaud : on rouvre le micro avec le bon réglage.
+    try {
+      const fresh = await openMic();
+      const src = ctx.createMediaStreamSource(fresh);
+      src.connect(micLp);
+      try { micSrc.disconnect(); } catch {}
+      stream.getTracks().forEach((t) => t.stop());
+      stream = fresh; micSrc = src;
+    } catch {}
+  }
+
+  function updateNoiseBtn() {
+    const b = $('noise');
+    if (!b) return;
+    b.textContent = noiseOn ? '🔇 Anti-bruit : activé' : '〰 Anti-bruit : désactivé';
+    b.classList.toggle('off', !noiseOn);
+  }
+
   // ---------- haut-parleur / écouteur
   // Sur téléphone, quand le micro est ouvert, le système envoie souvent le son vers l'écouteur (celui
   // des appels, très faible). En mode haut-parleur, le son passe par un lecteur audio classique, avec
@@ -190,7 +227,7 @@
     try { ctx && ctx.close(); } catch {}
     try { wakeLock && wakeLock.release(); } catch {}
     try { spkEl && spkEl.remove(); } catch {}
-    ws = ctx = capture = player = stream = wakeLock = outGain = spkDest = spkEl = null;
+    ws = ctx = capture = player = stream = wakeLock = outGain = spkDest = spkEl = micSrc = micLp = null;
   }
 
   // ---------- interface
@@ -230,6 +267,8 @@
     $('deaf').classList.toggle('off', deaf);
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'deaf', v: deaf }));
   };
+  $('noise').onclick = () => setNoise(!noiseOn);
+  updateNoiseBtn();
   $('speaker').onclick = async () => {
     speaker = !speaker;
     store.set('cv_spk', speaker ? '1' : '0');

@@ -21,6 +21,8 @@ public final class ClientConfig implements AudioEngine.Settings {
     public boolean microCoupe = false;
     public boolean sourdine = false;
     public boolean afficherHud = true;
+    /** Réducteur de bruit parasite (ventilateur, souffle, bourdonnement). */
+    public boolean reducteurBruit = true;
 
     private final Path file;
 
@@ -47,6 +49,7 @@ public final class ClientConfig implements AudioEngine.Settings {
         microCoupe = Boolean.parseBoolean(p.getProperty("micro_coupe", "" + microCoupe));
         sourdine = Boolean.parseBoolean(p.getProperty("sourdine", "" + sourdine));
         afficherHud = Boolean.parseBoolean(p.getProperty("afficher_hud", "" + afficherHud));
+        reducteurBruit = Boolean.parseBoolean(p.getProperty("reducteur_bruit", "" + reducteurBruit));
     }
 
     public void save() {
@@ -60,6 +63,7 @@ public final class ClientConfig implements AudioEngine.Settings {
         p.setProperty("micro_coupe", "" + microCoupe);
         p.setProperty("sourdine", "" + sourdine);
         p.setProperty("afficher_hud", "" + afficherHud);
+        p.setProperty("reducteur_bruit", "" + reducteurBruit);
         try {
             Files.createDirectories(file.getParent());
             try (Writer w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
@@ -77,6 +81,7 @@ public final class ClientConfig implements AudioEngine.Settings {
     @Override public int volume() { return volume; }
     @Override public boolean microCoupe() { return microCoupe; }
     @Override public boolean sourdine() { return sourdine; }
+    @Override public boolean reducteurBruit() { return reducteurBruit; }
 
     private static int i(Properties p, String k, int d) {
         try {

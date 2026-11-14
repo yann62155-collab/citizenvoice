@@ -18,7 +18,7 @@ dans `config/citizenvoice/citizenvoice.properties` côté serveur).
 ## Joueur PC
 | Touche (modifiable dans Options → Contrôles) | Action |
 |---|---|
-| **V** | menu des réglages : micro, sortie son, mode, sensibilité, amplification, volume, test du micro |
+| **V** | menu des réglages : micro, sortie son, mode, sensibilité, amplification, volume, test du micro, réducteur de bruit |
 | **Verr. Maj** | appuyer pour parler (si ce mode est choisi) |
 | **B** (maintenir) | chuchoter (3 blocs) |
 | **M** | couper / réactiver le micro |
@@ -26,9 +26,12 @@ dans `config/citizenvoice/citizenvoice.properties` côté serveur).
 En haut à gauche de l'écran : « Tu parles », « Micro coupé » et les noms des joueurs que tu entends.
 Réglages enregistrés dans `config/citizenvoice-client.properties`.
 
+**Réducteur de bruit parasite** (activé par défaut, désactivable dans le menu V) : retire le bruit de fond constant
+(ventilateur, souffle, bourdonnement électrique) en le mesurant en continu ; ~15 dB de bruit en moins, 16 ms de retard.
+
 ## Joueur console / téléphone
 - 10 s après la connexion : adresse + code à 6 chiffres dans le chat (`/voix` pour un nouveau code).
-- Sur la page : micro auto ou appuyer pour parler, chuchoter, couper le micro, sourdine, volume,
+- Sur la page : micro auto ou appuyer pour parler, chuchoter, haut-parleur, anti-bruit (celui du téléphone, désactivable), couper le micro, sourdine, volume,
   liste des joueurs à portée avec qui parle.
 
 ## Commandes admin (niveau 2)

@@ -1,6 +1,7 @@
 package fr.citizen.voice.client;
 
 import fr.citizen.voice.Audio;
+import fr.citizen.voice.Denoiser;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -46,6 +47,8 @@ public final class AudioEngine {
         boolean microCoupe();
 
         boolean sourdine();
+
+        boolean reducteurBruit();
     }
 
     private final Settings cfg;
@@ -287,7 +290,18 @@ public final class AudioEngine {
         }
     }
 
+    private Denoiser denoiser = new Denoiser();
+    private boolean denoiserWasOn;
+
     private int onFrame(short[] pcm, int vadHold) {
+        boolean dn = cfg.reducteurBruit();
+        if (dn) {
+            if (!denoiserWasOn) {
+                denoiser = new Denoiser(); // repart de zéro pour réapprendre le bruit de fond
+            }
+            pcm = denoiser.process(pcm);
+        }
+        denoiserWasOn = dn;
         double acc = 0;
         for (short v : pcm) {
             acc += (double) v * v;

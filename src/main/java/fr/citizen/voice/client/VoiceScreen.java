@@ -39,7 +39,7 @@ public final class VoiceScreen extends Screen {
         inputs.add(0, "");
         outputs.add(0, "");
         left = width / 2 - W / 2;
-        top = Math.max(28, height / 2 - 120);
+        top = Math.max(28, height / 2 - 132);
         int y = top;
 
         addRenderableWidget(Button.builder(Component.literal("Micro : " + label(c.micro)), b -> {
@@ -90,7 +90,13 @@ public final class VoiceScreen extends Screen {
             b.setMessage(hudText(c));
             c.save();
         }).bounds(left + half + 4, y, half, 20).build());
-        y += 44;
+        y += 24;
+        addRenderableWidget(Button.builder(noiseText(c), b -> {
+            c.reducteurBruit = !c.reducteurBruit;
+            b.setMessage(noiseText(c));
+            c.save();
+        }).bounds(left, y, W, 20).build());
+        y += 48;
         addRenderableWidget(Button.builder(Component.literal("Terminé"), b -> onClose()).bounds(width / 2 - 75, y, 150, 20).build());
     }
 
@@ -110,6 +116,10 @@ public final class VoiceScreen extends Screen {
         return Component.literal(e.testMic ? "§aTest micro : en cours" : "Tester mon micro");
     }
 
+    private static Component noiseText(ClientConfig c) {
+        return Component.literal("Réducteur de bruit parasite : " + (c.reducteurBruit ? "§aactivé" : "§cdésactivé"));
+    }
+
     private static Component hudText(ClientConfig c) {
         return Component.literal("Indicateurs : " + (c.afficherHud ? "oui" : "non"));
     }
@@ -125,7 +135,7 @@ public final class VoiceScreen extends Screen {
         g.drawCenteredString(font, title, width / 2, top - 18, 0xFFC9A24A);
         AudioEngine eng = CitizenVoiceClient.engine;
         ClientConfig c = CitizenVoiceClient.config;
-        int y = top + 24 * 9 + 2;
+        int y = top + 24 * 9;
         // vu-mètre du micro + seuil de déclenchement
         g.fill(left, y, left + W, y + 8, 0xFF2B1D12);
         int w = (int) (W * eng.level);
