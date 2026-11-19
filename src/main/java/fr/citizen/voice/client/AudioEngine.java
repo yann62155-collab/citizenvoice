@@ -73,6 +73,8 @@ public final class AudioEngine {
     private Thread playThread;
     private volatile TargetDataLine micLine;
     private volatile SourceDataLine outLine;
+    /** Flux micro partagé avec les fonctions locales (ex. reconnaissance des destinations). */
+    private volatile java.util.function.Consumer<short[]> commandCapture;
 
     private static final class Spk {
         final ConcurrentLinkedQueue<short[]> q = new ConcurrentLinkedQueue<>();
@@ -176,6 +178,11 @@ public final class AudioEngine {
 
     public boolean isRunning() {
         return running;
+    }
+
+    /** Installe un observateur des trames micro 16 kHz déjà capturées et débruitées. */
+    public void setCommandCapture(java.util.function.Consumer<short[]> capture) {
+        this.commandCapture = capture;
     }
 
     // ------------------------------------------------------------------ voix reçues
@@ -302,6 +309,10 @@ public final class AudioEngine {
             pcm = denoiser.process(pcm);
         }
         denoiserWasOn = dn;
+        java.util.function.Consumer<short[]> tap = commandCapture;
+        if (tap != null) {
+            try { tap.accept(pcm.clone()); } catch (Throwable ignored) { }
+        }
         double acc = 0;
         for (short v : pcm) {
             acc += (double) v * v;
