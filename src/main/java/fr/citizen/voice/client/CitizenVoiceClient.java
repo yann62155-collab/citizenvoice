@@ -65,6 +65,22 @@ public final class CitizenVoiceClient {
         e.register(MUTE);
     }
 
+    /**
+     * API publique pour les autres mods Citizen : observe les trames du micro déjà ouvert,
+     * après réduction du bruit, sans ouvrir une seconde ligne audio ni les transmettre au réseau.
+     * Retourne false si Citizen Voix n'est pas connecté au serveur.
+     */
+    public static boolean setCommandCapture(java.util.function.Consumer<short[]> listener) {
+        if (engine == null || !serverReady || !engine.isRunning()) return false;
+        engine.setCommandCapture(listener);
+        return true;
+    }
+
+    /** Arrête l'observation micro demandée par un autre mod. */
+    public static void clearCommandCapture() {
+        if (engine != null) engine.setCommandCapture(null);
+    }
+
     private static void sendMic(short[] pcm) {
         ClientPacketListener c = Minecraft.getInstance().getConnection();
         if (c != null && serverReady) {
