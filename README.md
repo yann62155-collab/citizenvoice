@@ -53,3 +53,8 @@ Cliquer sur un code dans le chat le copie.
 - iPhone : la page perd le micro quand on passe dans Minecraft sur le même téléphone → 2e appareil conseillé.
 - Edge sur Xbox : micro pas garanti → utiliser un téléphone à côté de la console.
 - Pas d'annulation d'écho : casque conseillé.
+
+
+### API micro partagé pour les mods Citizen
+
+Les mods compatibles peuvent observer les trames PCM 16 kHz du micro déjà ouvert par CitizenVoice avec `CitizenVoiceClient.setCommandCapture(Consumer<short[]>)`, puis arrêter l'observation avec `clearCommandCapture()`. Cette API ne crée pas une seconde capture audio et ne transmet pas les trames au réseau par elle-même.
